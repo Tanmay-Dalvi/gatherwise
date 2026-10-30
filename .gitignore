@@ -1,0 +1,86 @@
+# Secrets and Local Configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist
+dist-ssr
+*.local
+frontend/dist/
+
+# IDE and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Antigravity Control Pack & Internal Instructions
+AGENT_WORKFLOW.md
+AI_BEHAVIOR.md
+ARCHITECTURE_AND_STACK.md
+CHALLENGE_BRIEF.md
+DELIVERY_PLAN.md
+EVALUATION_MATRIX.md
+HANDOFF_REQUIREMENTS.md
+MASTER_PROMPT.md
+PRODUCT_SPEC.md
+README_FIRST.md
+SECURITY_PRIVACY.md
+SKILL_AND_DECISION_LOG.md
+TEST_STRATEGY.md
+UX_DESIGN_SYSTEM.md
+
+# Internal QA, Handoff & Audit Records
+PROJECT_HANDOFF.md
+QA_REPORT.md
+REGRESSION_TEST_PLAN.md
+docs/IMPLEMENTATION_STATUS.md
+docs/README.md
