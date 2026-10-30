@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -157,6 +158,25 @@ Return ONLY a JSON object with:
 """
     return build_planning_prompt(event, user_prompt)
 
+_shared_client: Optional[httpx.AsyncClient] = None
+
+def get_http_client() -> httpx.AsyncClient:
+    global _shared_client
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    client_loop = getattr(_shared_client, "_bound_loop", None) if _shared_client else None
+
+    if _shared_client is None or _shared_client.is_closed or client_loop != current_loop:
+        _shared_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(API_TIMEOUT_SECONDS, connect=10.0),
+            limits=httpx.Limits(max_keepalive_connections=10, max_connections=20)
+        )
+        setattr(_shared_client, "_bound_loop", current_loop)
+    return _shared_client
+
 def clean_json_response(raw_text: str) -> str:
     """Strips markdown code blocks if present."""
     text = raw_text.strip()
@@ -166,11 +186,19 @@ def clean_json_response(raw_text: str) -> str:
     return text.strip()
 
 async def call_gemini_api(prompt: str, model_name: str = GEMINI_MODEL) -> Optional[str]:
-    """Calls Gemini REST API with timeout and single retry."""
+    """Calls Gemini REST API with connection reuse, thinking optimization, and fallback."""
     if not GEMINI_API_KEY:
         return None
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+    gen_config: Dict[str, Any] = {
+        "temperature": 0.4,
+        "response_mime_type": "application/json"
+    }
+    # For Gemini 2.5 Flash, disable thinking tokens for instant structured output (< 2s)
+    if "2.5" in model_name:
+        gen_config["thinkingConfig"] = {"thinkingBudget": 0}
+
     payload = {
         "contents": [
             {
@@ -179,28 +207,26 @@ async def call_gemini_api(prompt: str, model_name: str = GEMINI_MODEL) -> Option
                 ]
             }
         ],
-        "generationConfig": {
-            "temperature": 0.4,
-            "response_mime_type": "application/json"
-        }
+        "generationConfig": gen_config
     }
 
-    async with httpx.AsyncClient(timeout=API_TIMEOUT_SECONDS) as client:
-        try:
-            response = await client.post(url, json=payload)
-            if response.status_code == 200:
-                data = response.json()
-                candidates = data.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    parts = candidates[0]["content"].get("parts", [])
-                    if parts and "text" in parts[0]:
-                        return parts[0]["text"]
-            elif response.status_code in (404, 400) and model_name != FALLBACK_MODEL:
-                return await call_gemini_api(prompt, model_name=FALLBACK_MODEL)
-            else:
-                logger.warning(f"Gemini API returned status {response.status_code}: {response.text}")
-        except Exception as e:
-            logger.warning(f"Gemini API request failed: {e}")
+    client = get_http_client()
+    try:
+        response = await client.post(url, json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            candidates = data.get("candidates", [])
+            if candidates and "content" in candidates[0]:
+                parts = candidates[0]["content"].get("parts", [])
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"]
+        elif response.status_code in (404, 400) and model_name != FALLBACK_MODEL:
+            logger.info(f"Model {model_name} returned {response.status_code}. Retrying with fallback {FALLBACK_MODEL}...")
+            return await call_gemini_api(prompt, model_name=FALLBACK_MODEL)
+        else:
+            logger.warning(f"Gemini API returned status {response.status_code}: {response.text}")
+    except Exception as e:
+        logger.warning(f"Gemini API request failed ({type(e).__name__}): {e}")
     return None
 
 async def generate_full_event_plan(

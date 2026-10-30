@@ -16,6 +16,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -66,7 +77,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close export dialog"
             className="text-stone-400 hover:text-stone-600 p-1.5 rounded-lg hover:bg-stone-200 transition"
           >
             <X className="w-5 h-5" />
@@ -76,9 +89,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Export Options */}
         <div className="p-6 space-y-3">
           {/* Print / Save to PDF */}
-          <div
+          <button
+            type="button"
             onClick={handlePrint}
-            className="flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group"
+            className="w-full text-left flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-800 transition">
@@ -94,12 +108,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-3 py-1.5 rounded-lg group-hover:bg-amber-200 group-hover:text-amber-900 transition">
               Print
             </span>
-          </div>
+          </button>
 
           {/* Download Markdown */}
-          <div
+          <button
+            type="button"
             onClick={handleDownloadMarkdown}
-            className="flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group"
+            className="w-full text-left flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-800 transition">
@@ -115,12 +130,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-3 py-1.5 rounded-lg group-hover:bg-amber-200 group-hover:text-amber-900 transition">
               Download
             </span>
-          </div>
+          </button>
 
           {/* Copy Markdown to clipboard */}
-          <div
+          <button
+            type="button"
             onClick={handleCopyMarkdown}
-            className="flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group"
+            className="w-full text-left flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-800 transition">
@@ -138,12 +154,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-3 py-1.5 rounded-lg group-hover:bg-amber-200 group-hover:text-amber-900 transition">
               {copied ? 'Copied' : 'Copy'}
             </span>
-          </div>
+          </button>
 
           {/* Download JSON Backup */}
-          <div
+          <button
+            type="button"
             onClick={handleDownloadJSON}
-            className="flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group"
+            className="w-full text-left flex items-center justify-between p-4 rounded-xl border border-stone-200 hover:border-amber-400 hover:bg-amber-50/40 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-800 transition">
@@ -159,7 +176,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-3 py-1.5 rounded-lg group-hover:bg-amber-200 group-hover:text-amber-900 transition">
               JSON
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Footer */}

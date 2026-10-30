@@ -81,6 +81,14 @@ export const App: React.FC = () => {
     loadActivePlan(id);
   };
 
+  const handleRefreshPlan = async (updatedPlan?: EventPlan) => {
+    if (updatedPlan) {
+      setCurrentPlan(updatedPlan);
+    } else if (activeEventId) {
+      await loadActivePlan(activeEventId);
+    }
+  };
+
   const handleBackToDashboard = async () => {
     setActiveEventId(null);
     setCurrentPlan(null);
@@ -172,7 +180,7 @@ export const App: React.FC = () => {
           <EventWorkspace
             plan={currentPlan}
             onBackToDashboard={handleBackToDashboard}
-            onRefreshPlan={() => loadActivePlan(activeEventId)}
+            onRefreshPlan={handleRefreshPlan}
             showToast={showToast}
           />
         ) : (

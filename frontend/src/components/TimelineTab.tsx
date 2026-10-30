@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Clock,
   Plus,
@@ -44,7 +44,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   }, [timeline, hasUnsavedChanges]);
 
   // Group milestones by phase
-  const phases = Array.from(new Set(milestones.map((m) => m.phase)));
+  const phases = useMemo(() => Array.from(new Set(milestones.map((m) => m.phase))), [milestones]);
 
   const handleStatusToggle = (id: string) => {
     setMilestones((prev) =>

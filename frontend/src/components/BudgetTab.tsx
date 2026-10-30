@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   DollarSign,
   Plus,
@@ -50,11 +50,33 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
   }, [budgetItems, hasUnsavedChanges]);
 
   // Categories list
-  const categories = Array.from(new Set(items.map((i) => i.category)));
+  const categories = useMemo(() => Array.from(new Set(items.map((i) => i.category))), [items]);
 
-  const filteredItems = selectedCategory === 'ALL'
-    ? items
-    : items.filter((i) => i.category === selectedCategory);
+  const filteredItems = useMemo(
+    () => (selectedCategory === 'ALL' ? items : items.filter((i) => i.category === selectedCategory)),
+    [items, selectedCategory]
+  );
+
+  // Live KPI metrics reflecting in-progress edits immediately
+  const liveTotalEstimated = useMemo(
+    () => (hasUnsavedChanges ? items.reduce((acc, i) => acc + (i.estimated_cost || 0), 0) : budgetSummary.total_estimated),
+    [hasUnsavedChanges, items, budgetSummary.total_estimated]
+  );
+
+  const liveTotalActual = useMemo(
+    () => (hasUnsavedChanges ? items.reduce((acc, i) => acc + (i.actual_cost || 0), 0) : budgetSummary.total_actual),
+    [hasUnsavedChanges, items, budgetSummary.total_actual]
+  );
+
+  const liveRemaining = useMemo(() => {
+    if (hasUnsavedChanges) {
+      const benchmark = liveTotalActual > 0 ? liveTotalActual : liveTotalEstimated;
+      return budgetSummary.target_budget - benchmark;
+    }
+    return budgetSummary.remaining_budget;
+  }, [hasUnsavedChanges, liveTotalActual, liveTotalEstimated, budgetSummary.target_budget, budgetSummary.remaining_budget]);
+
+  const liveIsOverBudget = liveRemaining < 0;
 
   const handleCostChange = (id: string, field: 'estimated_cost' | 'actual_cost', valueStr: string) => {
     const val = parseFloat(valueStr);
@@ -172,7 +194,7 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
             Total Estimated
           </span>
           <div className="text-lg sm:text-xl font-bold text-stone-900 mt-0.5">
-            {formatCurrency(budgetSummary.total_estimated, event.currency)}
+            {formatCurrency(liveTotalEstimated, event.currency)}
           </div>
         </div>
 
@@ -181,13 +203,13 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
             Total Actual Spent
           </span>
           <div className="text-lg sm:text-xl font-bold text-stone-900 mt-0.5">
-            {formatCurrency(budgetSummary.total_actual, event.currency)}
+            {formatCurrency(liveTotalActual, event.currency)}
           </div>
         </div>
 
         <div
           className={`border rounded-xl p-3.5 ${
-            budgetSummary.is_over_budget
+            liveIsOverBudget
               ? 'bg-rose-50 border-rose-200 text-rose-900'
               : 'bg-emerald-50 border-emerald-200 text-emerald-900'
           }`}
@@ -196,14 +218,14 @@ export const BudgetTab: React.FC<BudgetTabProps> = ({
             <span className="text-[11px] font-semibold uppercase tracking-wider">
               Remaining Budget
             </span>
-            {budgetSummary.is_over_budget ? (
+            {liveIsOverBudget ? (
               <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
             ) : (
               <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
             )}
           </div>
           <div className="text-lg sm:text-xl font-bold mt-0.5">
-            {formatCurrency(budgetSummary.remaining_budget, event.currency)}
+            {formatCurrency(liveRemaining, event.currency)}
           </div>
         </div>
       </div>

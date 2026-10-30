@@ -9,7 +9,10 @@ import { TimelineTab } from '../components/TimelineTab';
 import { ChecklistTab } from '../components/ChecklistTab';
 import { ExportModal } from '../components/ExportModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
-import { Event, BudgetItem, TimelineMilestone, ChecklistTask, BudgetSummary, EventPlan } from '../types';
+import { OverviewTab } from '../components/OverviewTab';
+import { IdeasTab } from '../components/IdeasTab';
+import { Navbar } from '../components/Navbar';
+import { Event, BudgetItem, TimelineMilestone, ChecklistTask, CreativeIdea, BudgetSummary, EventPlan } from '../types';
 
 describe('GatherWise Frontend Components', () => {
   const mockEvent: Event = {
@@ -77,6 +80,17 @@ describe('GatherWise Frontend Components', () => {
       contact_info: 'County Parks',
       status: 'todo',
       notes: 'Sound curfew 22:00',
+    },
+  ];
+
+  const mockIdeas: CreativeIdea[] = [
+    {
+      id: 'i-1',
+      event_id: 'ev-1',
+      category: 'Theme & Aesthetic',
+      title: 'Driftwood & Lavender Centerpieces',
+      description: 'Handcrafted local driftwood paired with fragrant coastal lavender bundles.',
+      tags: ['Eco-friendly', 'Coastal'],
     },
   ];
 
@@ -267,6 +281,115 @@ describe('GatherWise Frontend Components', () => {
       expect(window.print).toHaveBeenCalled();
 
       window.print = originalPrint;
+    });
+  });
+
+  describe('OverviewTab', () => {
+    it('renders event details, countdown, and KPI stats', () => {
+      const mockPlan: EventPlan = {
+        event: mockEvent,
+        budget_summary: mockBudgetSummary,
+        budget_items: mockBudgetItems,
+        timeline: mockTimeline,
+        checklist: mockChecklist,
+        ideas: mockIdeas,
+        assumptions: ['Standard 5% contingency buffer applied.'],
+        generation_source: 'gemini',
+      };
+      const onNavigateTab = vi.fn();
+      const onOpenRegenerate = vi.fn();
+
+      render(
+        <OverviewTab
+          plan={mockPlan}
+          onNavigateTab={onNavigateTab}
+          onOpenRegenerate={onOpenRegenerate}
+        />
+      );
+
+      expect(screen.getByText('Sophie & Liam Wedding')).toBeInTheDocument();
+      expect(screen.getByText(/Carmel, CA/i)).toBeInTheDocument();
+      expect(screen.getByText(/90 expected guests/i)).toBeInTheDocument();
+      expect(screen.getByText(/Target Budget/i)).toBeInTheDocument();
+
+      // Click on target budget KPI card to navigate
+      const targetBudgetBtn = screen.getByRole('button', { name: /Target budget summary/i });
+      fireEvent.click(targetBudgetBtn);
+      expect(onNavigateTab).toHaveBeenCalledWith('budget');
+
+      // Key press navigation (Enter)
+      fireEvent.keyDown(targetBudgetBtn, { key: 'Enter', code: 'Enter' });
+      expect(onNavigateTab).toHaveBeenCalledWith('budget');
+    });
+  });
+
+  describe('IdeasTab', () => {
+    it('renders creative ideas and allows adding custom inspirations', () => {
+      const onSaveIdeas = vi.fn().mockResolvedValue(undefined);
+      const onOpenRegenerateModal = vi.fn();
+
+      render(
+        <IdeasTab
+          event={mockEvent}
+          ideas={mockIdeas}
+          onSaveIdeas={onSaveIdeas}
+          onOpenRegenerateModal={onOpenRegenerateModal}
+          isSaving={false}
+        />
+      );
+
+      expect(screen.getByText('Driftwood & Lavender Centerpieces')).toBeInTheDocument();
+      expect(screen.getByText(/Handcrafted local driftwood/i)).toBeInTheDocument();
+      expect(screen.getByText('Eco-friendly')).toBeInTheDocument();
+
+      // Open new idea form
+      fireEvent.click(screen.getByRole('button', { name: /Add Custom Idea/i }));
+      expect(screen.getByPlaceholderText(/Polaroid Guestbook Station/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Navbar', () => {
+    it('displays active Gemini AI status badge when configured', () => {
+      const onNavigateHome = vi.fn();
+      const onOpenCreateModal = vi.fn();
+
+      render(
+        <Navbar
+          health={{
+            status: 'ok',
+            gemini_configured: true,
+            database: 'connected',
+            ai_provider: 'gemini-2.5-flash',
+            version: '1.0.0',
+          }}
+          onOpenCreateModal={onOpenCreateModal}
+          onNavigateHome={onNavigateHome}
+          isInsideWorkspace={false}
+        />
+      );
+
+      expect(screen.getByText(/Gemini AI Active/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /GatherWise Home/i }));
+      expect(onNavigateHome).toHaveBeenCalled();
+    });
+
+    it('displays Demo / Offline Mode badge when gemini_configured is false', () => {
+      render(
+        <Navbar
+          health={{
+            status: 'ok',
+            gemini_configured: false,
+            database: 'connected',
+            ai_provider: 'deterministic_engine',
+            version: '1.0.0',
+          }}
+          onOpenCreateModal={vi.fn()}
+          onNavigateHome={vi.fn()}
+          isInsideWorkspace={false}
+        />
+      );
+
+      expect(screen.getByText(/Demo \/ Offline Mode/i)).toBeInTheDocument();
     });
   });
 });

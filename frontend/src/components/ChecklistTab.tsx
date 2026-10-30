@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   CheckSquare,
   Square,
@@ -92,15 +92,17 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({
     setHasUnsavedChanges(false);
   };
 
-  const completedCount = tasks.filter((t) => t.status === 'done').length;
+  const completedCount = useMemo(() => tasks.filter((t) => t.status === 'done').length, [tasks]);
 
-  const filteredTasks = tasks.filter((t) => {
-    if (filter === 'TODO') return t.status !== 'done';
-    if (filter === 'DONE') return t.status === 'done';
-    return true;
-  });
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (filter === 'TODO') return t.status !== 'done';
+      if (filter === 'DONE') return t.status === 'done';
+      return true;
+    });
+  }, [tasks, filter]);
 
-  const categories = Array.from(new Set(tasks.map((t) => t.category)));
+  const categories = useMemo(() => Array.from(new Set(tasks.map((t) => t.category))), [tasks]);
 
   return (
     <div className="space-y-6">

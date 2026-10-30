@@ -28,7 +28,7 @@ import { formatEventDate } from '../utils/format';
 interface EventWorkspaceProps {
   plan: EventPlan;
   onBackToDashboard: () => void;
-  onRefreshPlan: () => Promise<void>;
+  onRefreshPlan: (updatedPlan?: EventPlan) => Promise<void> | void;
   showToast: (type: 'success' | 'error' | 'info', msg: string) => void;
 }
 
@@ -51,8 +51,8 @@ export const EventWorkspace: React.FC<EventWorkspaceProps> = ({
   const handleSaveBudgetItems = async (items: BudgetItem[]) => {
     setIsSaving(true);
     try {
-      await api.updateBudgetItems(event.id, items);
-      await onRefreshPlan();
+      const updatedPlan = await api.updateBudgetItems(event.id, items);
+      await onRefreshPlan(updatedPlan);
       showToast('success', 'Budget changes saved and totals recalculated!');
     } catch (err: any) {
       showToast('error', err?.message || 'Failed to save budget changes.');
@@ -64,8 +64,8 @@ export const EventWorkspace: React.FC<EventWorkspaceProps> = ({
   const handleSaveTimeline = async (milestones: TimelineMilestone[]) => {
     setIsSaving(true);
     try {
-      await api.updateTimeline(event.id, milestones);
-      await onRefreshPlan();
+      const updatedPlan = await api.updateTimeline(event.id, milestones);
+      await onRefreshPlan(updatedPlan);
       showToast('success', 'Timeline milestones saved successfully!');
     } catch (err: any) {
       showToast('error', err?.message || 'Failed to save timeline.');
@@ -77,8 +77,8 @@ export const EventWorkspace: React.FC<EventWorkspaceProps> = ({
   const handleSaveChecklist = async (tasks: ChecklistTask[]) => {
     setIsSaving(true);
     try {
-      await api.updateChecklist(event.id, tasks);
-      await onRefreshPlan();
+      const updatedPlan = await api.updateChecklist(event.id, tasks);
+      await onRefreshPlan(updatedPlan);
       showToast('success', 'Checklist items saved successfully!');
     } catch (err: any) {
       showToast('error', err?.message || 'Failed to save checklist.');
@@ -90,8 +90,8 @@ export const EventWorkspace: React.FC<EventWorkspaceProps> = ({
   const handleSaveIdeas = async (ideas: CreativeIdea[]) => {
     setIsSaving(true);
     try {
-      await api.updateIdeas(event.id, ideas);
-      await onRefreshPlan();
+      const updatedPlan = await api.updateIdeas(event.id, ideas);
+      await onRefreshPlan(updatedPlan);
       showToast('success', 'Creative ideas saved successfully!');
     } catch (err: any) {
       showToast('error', err?.message || 'Failed to save ideas.');
@@ -116,8 +116,8 @@ export const EventWorkspace: React.FC<EventWorkspaceProps> = ({
     preserveManual: boolean
   ) => {
     try {
-      await api.regenerateSection(event.id, section, userPrompt, preserveManual);
-      await onRefreshPlan();
+      const updatedPlan = await api.regenerateSection(event.id, section, userPrompt, preserveManual);
+      await onRefreshPlan(updatedPlan);
       showToast('success', `Regenerated ${section} section while preserving your custom items!`);
     } catch (err: any) {
       showToast('error', err?.message || `Failed to regenerate ${section}.`);

@@ -21,7 +21,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="bg-white border-b border-stone-200 sticky top-0 z-30 shadow-sm no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={onNavigateHome}>
+        <button
+          type="button"
+          onClick={onNavigateHome}
+          className="flex items-center space-x-3 text-left focus:outline-none focus:ring-2 focus:ring-amber-500 rounded-xl"
+          aria-label="GatherWise Home"
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-sm shadow-amber-200">
             <Sparkles className="w-5 h-5" />
           </div>
@@ -38,17 +43,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               Celebration & Event Intelligence
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Center Breadcrumb if in workspace */}
         {isInsideWorkspace && eventTitle && (
           <div className="hidden md:flex items-center space-x-2 text-sm text-stone-600 truncate max-w-xs lg:max-w-md">
-            <span
+            <button
+              type="button"
               onClick={onNavigateHome}
-              className="hover:text-stone-900 cursor-pointer font-medium"
+              className="hover:text-stone-900 font-medium focus:outline-none focus:underline"
             >
               Dashboard
-            </span>
+            </button>
             <span className="text-stone-400">/</span>
             <span className="text-stone-900 font-semibold truncate">{eventTitle}</span>
           </div>

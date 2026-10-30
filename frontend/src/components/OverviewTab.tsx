@@ -59,8 +59,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Target Budget */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => onNavigateTab('budget')}
-          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigateTab('budget');
+            }
+          }}
+          aria-label="Target budget summary. Press to view budget."
+          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           <div className="flex items-center justify-between text-stone-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Target Budget</span>
@@ -76,8 +85,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
         {/* Estimated vs Actual */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => onNavigateTab('budget')}
-          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigateTab('budget');
+            }
+          }}
+          aria-label="Actual spent summary. Press to view budget."
+          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           <div className="flex items-center justify-between text-stone-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Actual Spent</span>
@@ -93,8 +111,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
         {/* Remaining Budget */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => onNavigateTab('budget')}
-          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigateTab('budget');
+            }
+          }}
+          aria-label="Remaining budget summary. Press to view budget."
+          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           <div className="flex items-center justify-between text-stone-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Remaining</span>
@@ -118,8 +145,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
         {/* Task Completion */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => onNavigateTab('checklist')}
-          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onNavigateTab('checklist');
+            }
+          }}
+          aria-label="Checklist progress summary. Press to view checklist."
+          className="bg-white rounded-xl border border-stone-200 p-5 shadow-sm hover:border-amber-400 transition cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           <div className="flex items-center justify-between text-stone-500 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Checklist Progress</span>

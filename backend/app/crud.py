@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from typing import List, Optional
 from datetime import datetime
 from backend.app.database import get_db
@@ -58,14 +59,15 @@ def create_event(event_data: EventCreate) -> Event:
         conn.commit()
     return event
 
-def get_event(event_id: str) -> Optional[Event]:
-    with get_db() as conn:
+def get_event(event_id: str, conn: Optional[sqlite3.Connection] = None) -> Optional[Event]:
+    if conn is not None:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM events WHERE id = ?", (event_id,))
         row = cursor.fetchone()
-        if not row:
-            return None
-        return event_row_to_model(row)
+        return event_row_to_model(row) if row else None
+
+    with get_db() as c:
+        return get_event(event_id, conn=c)
 
 def list_events() -> List[Event]:
     with get_db() as conn:
@@ -112,8 +114,8 @@ def delete_event(event_id: str) -> bool:
         conn.commit()
         return cursor.rowcount > 0
 
-def get_budget_items(event_id: str) -> List[BudgetItem]:
-    with get_db() as conn:
+def get_budget_items(event_id: str, conn: Optional[sqlite3.Connection] = None) -> List[BudgetItem]:
+    if conn is not None:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM budget_items WHERE event_id = ? ORDER BY category, estimated_cost DESC", (event_id,))
         rows = cursor.fetchall()
@@ -131,8 +133,11 @@ def get_budget_items(event_id: str) -> List[BudgetItem]:
             for r in rows
         ]
 
-def get_timeline_milestones(event_id: str) -> List[TimelineMilestone]:
-    with get_db() as conn:
+    with get_db() as c:
+        return get_budget_items(event_id, conn=c)
+
+def get_timeline_milestones(event_id: str, conn: Optional[sqlite3.Connection] = None) -> List[TimelineMilestone]:
+    if conn is not None:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM timeline_milestones WHERE event_id = ?", (event_id,))
         rows = cursor.fetchall()
@@ -150,8 +155,11 @@ def get_timeline_milestones(event_id: str) -> List[TimelineMilestone]:
             for r in rows
         ]
 
-def get_checklist_tasks(event_id: str) -> List[ChecklistTask]:
-    with get_db() as conn:
+    with get_db() as c:
+        return get_timeline_milestones(event_id, conn=c)
+
+def get_checklist_tasks(event_id: str, conn: Optional[sqlite3.Connection] = None) -> List[ChecklistTask]:
+    if conn is not None:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM checklist_tasks WHERE event_id = ? ORDER BY category, due_date", (event_id,))
         rows = cursor.fetchall()
@@ -170,8 +178,11 @@ def get_checklist_tasks(event_id: str) -> List[ChecklistTask]:
             for r in rows
         ]
 
-def get_creative_ideas(event_id: str) -> List[CreativeIdea]:
-    with get_db() as conn:
+    with get_db() as c:
+        return get_checklist_tasks(event_id, conn=c)
+
+def get_creative_ideas(event_id: str, conn: Optional[sqlite3.Connection] = None) -> List[CreativeIdea]:
+    if conn is not None:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM creative_ideas WHERE event_id = ? ORDER BY category", (event_id,))
         rows = cursor.fetchall()
@@ -187,17 +198,20 @@ def get_creative_ideas(event_id: str) -> List[CreativeIdea]:
             for r in rows
         ]
 
+    with get_db() as c:
+        return get_creative_ideas(event_id, conn=c)
+
 def get_event_plan(event_id: str) -> Optional[EventPlan]:
-    event = get_event(event_id)
-    if not event:
-        return None
-
-    budget_items = get_budget_items(event_id)
-    timeline = get_timeline_milestones(event_id)
-    checklist = get_checklist_tasks(event_id)
-    ideas = get_creative_ideas(event_id)
-
     with get_db() as conn:
+        event = get_event(event_id, conn=conn)
+        if not event:
+            return None
+
+        budget_items = get_budget_items(event_id, conn=conn)
+        timeline = get_timeline_milestones(event_id, conn=conn)
+        checklist = get_checklist_tasks(event_id, conn=conn)
+        ideas = get_creative_ideas(event_id, conn=conn)
+
         cursor = conn.cursor()
         cursor.execute("SELECT assumptions, generation_source FROM plan_metadata WHERE event_id = ?", (event_id,))
         meta_row = cursor.fetchone()
@@ -230,92 +244,118 @@ def save_full_plan(
     assumptions: List[str],
     generation_source: str
 ):
+    now = utc_now_iso()
     with get_db() as conn:
         cursor = conn.cursor()
-        # Clean existing items for full overwrite or initial save
         cursor.execute("DELETE FROM budget_items WHERE event_id = ?", (event_id,))
         cursor.execute("DELETE FROM timeline_milestones WHERE event_id = ?", (event_id,))
         cursor.execute("DELETE FROM checklist_tasks WHERE event_id = ?", (event_id,))
         cursor.execute("DELETE FROM creative_ideas WHERE event_id = ?", (event_id,))
 
-        for item in budget_items:
-            cursor.execute("""
+        if budget_items:
+            cursor.executemany("""
                 INSERT INTO budget_items (id, event_id, category, description, estimated_cost, actual_cost, notes, is_custom)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (item.id, event_id, item.category, item.description, item.estimated_cost, item.actual_cost, item.notes, int(item.is_custom)))
+            """, [
+                (item.id, event_id, item.category, item.description, item.estimated_cost, item.actual_cost, item.notes or "", int(item.is_custom))
+                for item in budget_items
+            ])
 
-        for m in timeline:
-            cursor.execute("""
+        if timeline:
+            cursor.executemany("""
                 INSERT INTO timeline_milestones (id, event_id, phase, title, target_date, priority, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (m.id, event_id, m.phase, m.title, m.target_date, m.priority, m.status, m.notes))
+            """, [
+                (m.id, event_id, m.phase, m.title, m.target_date or "", m.priority, m.status, m.notes or "")
+                for m in timeline
+            ])
 
-        for t in checklist:
-            cursor.execute("""
+        if checklist:
+            cursor.executemany("""
                 INSERT INTO checklist_tasks (id, event_id, category, title, due_date, assigned_to, contact_info, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (t.id, event_id, t.category, t.title, t.due_date, t.assigned_to, t.contact_info, t.status, t.notes))
+            """, [
+                (t.id, event_id, t.category, t.title, t.due_date or "", t.assigned_to or "", t.contact_info or "", t.status, t.notes or "")
+                for t in checklist
+            ])
 
-        for idea in ideas:
-            cursor.execute("""
+        if ideas:
+            cursor.executemany("""
                 INSERT INTO creative_ideas (id, event_id, category, title, description, tags)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (idea.id, event_id, idea.category, idea.title, idea.description, json.dumps(idea.tags)))
+            """, [
+                (idea.id, event_id, idea.category, idea.title, idea.description, json.dumps(idea.tags))
+                for idea in ideas
+            ])
 
         cursor.execute("""
             INSERT OR REPLACE INTO plan_metadata (event_id, assumptions, generation_source, updated_at)
             VALUES (?, ?, ?, ?)
-        """, (event_id, json.dumps(assumptions), generation_source, utc_now_iso()))
+        """, (event_id, json.dumps(assumptions), generation_source, now))
 
-        # Mark event updated
-        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (utc_now_iso(), event_id))
-
+        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (now, event_id))
         conn.commit()
 
 def save_budget_items(event_id: str, items: List[BudgetItem]):
+    now = utc_now_iso()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM budget_items WHERE event_id = ?", (event_id,))
-        for item in items:
-            cursor.execute("""
+        if items:
+            cursor.executemany("""
                 INSERT INTO budget_items (id, event_id, category, description, estimated_cost, actual_cost, notes, is_custom)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (item.id, event_id, item.category, item.description, item.estimated_cost, item.actual_cost, item.notes, int(item.is_custom)))
-        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (utc_now_iso(), event_id))
+            """, [
+                (item.id, event_id, item.category, item.description, item.estimated_cost, item.actual_cost, item.notes or "", int(item.is_custom))
+                for item in items
+            ])
+        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (now, event_id))
         conn.commit()
 
 def save_timeline_milestones(event_id: str, milestones: List[TimelineMilestone]):
+    now = utc_now_iso()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM timeline_milestones WHERE event_id = ?", (event_id,))
-        for m in milestones:
-            cursor.execute("""
+        if milestones:
+            cursor.executemany("""
                 INSERT INTO timeline_milestones (id, event_id, phase, title, target_date, priority, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (m.id, event_id, m.phase, m.title, m.target_date, m.priority, m.status, m.notes))
-        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (utc_now_iso(), event_id))
+            """, [
+                (m.id, event_id, m.phase, m.title, m.target_date or "", m.priority, m.status, m.notes or "")
+                for m in milestones
+            ])
+        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (now, event_id))
         conn.commit()
 
 def save_checklist_tasks(event_id: str, tasks: List[ChecklistTask]):
+    now = utc_now_iso()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM checklist_tasks WHERE event_id = ?", (event_id,))
-        for t in tasks:
-            cursor.execute("""
+        if tasks:
+            cursor.executemany("""
                 INSERT INTO checklist_tasks (id, event_id, category, title, due_date, assigned_to, contact_info, status, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (t.id, event_id, t.category, t.title, t.due_date, t.assigned_to, t.contact_info, t.status, t.notes))
-        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (utc_now_iso(), event_id))
+            """, [
+                (t.id, event_id, t.category, t.title, t.due_date or "", t.assigned_to or "", t.contact_info or "", t.status, t.notes or "")
+                for t in tasks
+            ])
+        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (now, event_id))
         conn.commit()
 
 def save_creative_ideas(event_id: str, ideas: List[CreativeIdea]):
+    now = utc_now_iso()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM creative_ideas WHERE event_id = ?", (event_id,))
-        for idea in ideas:
-            cursor.execute("""
+        if ideas:
+            cursor.executemany("""
                 INSERT INTO creative_ideas (id, event_id, category, title, description, tags)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (idea.id, event_id, idea.category, idea.title, idea.description, json.dumps(idea.tags)))
-        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (utc_now_iso(), event_id))
+            """, [
+                (idea.id, event_id, idea.category, idea.title, idea.description, json.dumps(idea.tags))
+                for idea in ideas
+            ])
+        cursor.execute("UPDATE events SET updated_at = ? WHERE id = ?", (now, event_id))
         conn.commit()

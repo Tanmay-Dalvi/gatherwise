@@ -101,6 +101,16 @@ def init_db():
             );
         """)
 
+        # Performance indexes for foreign key lookups and cascading operations
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_budget_items_event_id ON budget_items(event_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_timeline_milestones_event_id ON timeline_milestones(event_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_checklist_tasks_event_id ON checklist_tasks(event_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_creative_ideas_event_id ON creative_ideas(event_id);")
+
+        # Concurrency & write efficiency optimizations
+        cursor.execute("PRAGMA journal_mode = WAL;")
+        cursor.execute("PRAGMA synchronous = NORMAL;")
+
         conn.commit()
 
 @contextmanager
